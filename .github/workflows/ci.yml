@@ -1,0 +1,29 @@
+name: CI
+
+# Lints and tests every push and pull request, mirroring what tests/run.sh does
+# locally: Lua syntax under the real runtime, no accidental globals, the
+# headless logic suite, and valid translation files (a malformed .po would fail
+# to compile and silently disable that locale on device).
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install LuaJIT and gettext
+        run: sudo apt-get update && sudo apt-get install -y luajit gettext
+
+      # tests/run.sh covers syntax, the global-write scan, the logic suite and
+      # the .po validation, so CI and a local run can never drift apart.
+      #
+      # Everything runs under LuaJIT rather than standard Lua: LuaJIT is what
+      # KOReader actually ships, so the 5.1 dialect is enforced exactly as it
+      # would be on device. The tests never touch the FFI, so LuaJIT's lack of
+      # KOReader's C declarations doesn't matter here.
+      - name: Run test suite
+        run: ./tests/run.sh

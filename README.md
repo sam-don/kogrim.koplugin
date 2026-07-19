@@ -1,0 +1,139 @@
+# kogrim
+
+A KOReader plugin for [Grimmory](https://github.com/grimmory-tools/grimmory) — browse your
+self-hosted library and download books straight to the device.
+
+Grimmory ships a purpose-built app API that returns read status, reading progress, personal
+ratings and series information alongside each book. kogrim uses that API rather than the
+server's OPDS feed, so lists show you what you've already read and how far you got — things a
+bare OPDS catalogue throws away. (If you only want a plain catalogue, KOReader's built-in OPDS
+plugin already does that and you don't need this.)
+
+## Status
+
+v0.1.0 — browse and download. Reading-progress sync back to Grimmory, cover thumbnails and
+shelf editing are not implemented yet.
+
+## Install
+
+This repository *is* the plugin — its root is what KOReader loads. The directory it lives in
+on the device **must** be named `kogrim.koplugin`; KOReader derives the plugin's identity from
+that name.
+
+**Kobo, over USB:**
+
+```sh
+./tools/install-kobo.sh          # install or update
+./tools/install-kobo.sh --log    # pull crash.log off the device
+./tools/install-kobo.sh --remove # uninstall
+```
+
+It syntax-checks every file before writing, so it can't push a plugin that would stop KOReader
+starting. Eject and unplug afterwards, then restart KOReader.
+
+**Anything else** — copy the repository contents into a `kogrim.koplugin` directory under
+KOReader's `plugins/`:
+
+| Platform | Path |
+|---|---|
+| Kobo | `.adds/koreader/plugins/kogrim.koplugin/` |
+| Kindle / Android | `koreader/plugins/kogrim.koplugin/` |
+| Linux | `~/.config/koreader/plugins/kogrim.koplugin/` |
+
+`tests/`, `tools/` and `.github/` are development-only and don't need to go on the device.
+
+Then set up the connection under **Tools ▸ Grimmory ▸ Server and account**: enter your server
+URL (`https://…`), username and password, and kogrim will verify the login immediately.
+
+## Use
+
+**Tools ▸ Grimmory ▸ Browse library** opens a hub:
+
+- **Continue reading** — books Grimmory has you part-way through
+- **Recently added** — newest arrivals
+- **Libraries** / **Shelves** — drill into either
+- **All books** — the whole catalogue
+- **Search** — free-text over title, author and series
+
+Tap a book for details and a Download button. **Long-press a book to download it immediately**,
+skipping the detail sheet. A `✓` in the right-hand column means the file is already in your
+download folder; `paper` means it's a physical book with no file to fetch.
+
+Lists page continuously. Books are fetched from the server in batches, but you just turn pages
+normally — reaching the end of what's loaded quietly pulls in the next batch, so the batch
+boundary never shows up as a thing you have to click through.
+
+Both *Browse library* and *Search* can be bound to a gesture or key via KOReader's usual
+Dispatcher (Settings ▸ Gesture manager), where they appear as *Grimmory: browse library* and
+*Grimmory: search*.
+
+### Settings
+
+| Setting | Default |
+|---|---|
+| Download folder | `<your home folder>/Grimmory` |
+| Books loaded at a time | 100 — lower it on a slow connection |
+| Open books after downloading | on |
+
+## Credentials are stored in plain text
+
+Your Grimmory username, password and session tokens live in
+`<koreader>/settings/kogrim.lua`, unencrypted. There is no keychain on these devices, and this
+is the same approach KOReader's own OPDS plugin takes for catalogue credentials — but it does
+mean anyone with filesystem access to your device can read them. Consider a dedicated Grimmory
+account for the device if that matters to you.
+
+The password is kept (not just the tokens) because it is what lets kogrim recover silently
+when a session expires. **Sign out** clears the password and the tokens, keeping only the URL
+and username.
+
+## Development
+
+```sh
+./tests/run.sh
+```
+
+Needs `luajit` — LuaJIT is what KOReader actually runs, so it enforces the same 5.1 dialect as
+the device. `msgfmt` (gettext) is used for the translation check if present. The suite covers
+Lua syntax, a scan for accidental global writes, and the plumbing that has no device
+dependency: URL building, settings defaults, base-URL normalisation, auth headers and filename
+derivation.
+
+It cannot cover drawing — everything in `lib/kogrim_browser.lua` builds widgets, which need a
+real device. **Open each screen once before releasing.**
+
+### Layout
+
+```
+_meta.lua                  plugin identity and version
+main.lua                   wiring only: menu, Dispatcher, event handlers
+lib/kogrim_i18n.lua        .po loader, falls back to KOReader's gettext
+lib/kogrim_settings.lua    preferences, in settings/kogrim.lua
+lib/kogrim_http.lua        socket/ltn12 primitives: GET, POST, download, Wi-Fi gate
+lib/kogrim_api.lua         Grimmory endpoints + JWT lifecycle
+lib/kogrim_account.lua     the server/credentials sheet
+lib/kogrim_download.lua    filenames, destinations, download UX
+lib/kogrim_browser.lua     the browse UI
+```
+
+### Adding a language
+
+Copy `locale/kogrim.pot` to `locale/<lang>.po` (e.g. `locale/de.po`), fill in the `msgstr`
+values, done — no code changes needed.
+
+## Grimmory endpoints used
+
+| Purpose | Endpoint |
+|---|---|
+| Login / refresh | `POST /api/v1/auth/login`, `POST /api/v1/auth/refresh` |
+| Current user | `GET /api/v1/app/users/me` |
+| Book list | `GET /api/v1/app/books?page&size&sort&dir&libraryId&shelfId` |
+| Search | `GET /api/v1/app/books/search?q&page&size` |
+| Continue reading / recently added | `GET /api/v1/app/books/continue-reading`, `…/recently-added` |
+| Book detail | `GET /api/v1/app/books/{id}` |
+| Libraries / shelves | `GET /api/v1/app/libraries`, `GET /api/v1/app/shelves` |
+| Download | `GET /api/v1/books/{id}/download` |
+
+Auth is a JWT in `Authorization: Bearer …`. On a 401, kogrim refreshes the token once, then
+falls back to a full re-login, then retries the original request — so an expired session is
+invisible unless the credentials themselves have gone bad.
