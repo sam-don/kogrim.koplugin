@@ -8,6 +8,9 @@ name: CI
 on:
   push:
   pull_request:
+  # Lets CI be re-run from the Actions tab without inventing an empty commit
+  # (gh workflow run CI).
+  workflow_dispatch:
 
 jobs:
   check:
