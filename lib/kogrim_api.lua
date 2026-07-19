@@ -215,8 +215,24 @@ function Api.getRecentlyAdded(limit)
         .. Http.buildQuery{ { "limit", limit or 20 } })
 end
 
+-- Book ids come from server JSON and get concatenated into a URL path, so they
+-- are checked to be plain integers first. Without this, an id of "1/../../x"
+-- (or a rapidjson null sentinel, which stringifies to "userdata: 0x...")
+-- would be spliced straight into the request path.
+local function bookPathId(book_id)
+    if type(book_id) == "number" and book_id == math.floor(book_id) then
+        return string.format("%d", book_id)
+    end
+    if type(book_id) == "string" and book_id:match("^%d+$") then
+        return book_id
+    end
+    return nil
+end
+
 function Api.getBookDetail(book_id)
-    return Api.call("/api/v1/app/books/" .. tostring(book_id))
+    local id = bookPathId(book_id)
+    if not id then return nil, _("That book has an unusable id.") end
+    return Api.call("/api/v1/app/books/" .. id)
 end
 
 --- Stream a book's primary file to dest_path. Returns dest_path or nil, err.
@@ -229,7 +245,9 @@ function Api.downloadBook(book_id, dest_path)
         local ok, err = Api.login()
         if not ok then return nil, err end
     end
-    local target = url .. "/api/v1/books/" .. tostring(book_id) .. "/download"
+    local id = bookPathId(book_id)
+    if not id then return nil, _("That book has an unusable id.") end
+    local target = url .. "/api/v1/books/" .. id .. "/download"
     local path, err = Http.downloadToFile(target, Api.authHeaders(), dest_path)
     if path then return path end
     -- Downloads bypass Api.call, so replay its 401 recovery here rather than

@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: kogrim 0.1.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-07-20 08:44+1000\n"
+"POT-Creation-Date: 2026-07-20 09:10+1000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -17,7 +17,7 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: _meta.lua:15 main.lua:98 lib/kogrim_browser.lua:666
+#: _meta.lua:15 main.lua:98 lib/kogrim_browser.lua:676
 msgid "Grimmory"
 msgstr ""
 
@@ -40,7 +40,7 @@ msgstr ""
 msgid "Browse library"
 msgstr ""
 
-#: main.lua:110 lib/kogrim_browser.lua:648
+#: main.lua:110 lib/kogrim_browser.lua:658
 msgid "Search…"
 msgstr ""
 
@@ -137,7 +137,7 @@ msgstr ""
 msgid "Password"
 msgstr ""
 
-#: lib/kogrim_account.lua:99 lib/kogrim_browser.lua:595
+#: lib/kogrim_account.lua:99 lib/kogrim_browser.lua:605
 msgid "Cancel"
 msgstr ""
 
@@ -153,7 +153,7 @@ msgstr ""
 msgid "Signed out of Grimmory."
 msgstr ""
 
-#: lib/kogrim_api.lua:91 lib/kogrim_api.lua:126 lib/kogrim_api.lua:227
+#: lib/kogrim_api.lua:91 lib/kogrim_api.lua:126 lib/kogrim_api.lua:243
 msgid "No server URL configured."
 msgstr ""
 
@@ -177,6 +177,10 @@ msgstr ""
 msgid "Session expired. Check your Grimmory credentials."
 msgstr ""
 
+#: lib/kogrim_api.lua:234 lib/kogrim_api.lua:249
+msgid "That book has an unusable id."
+msgstr ""
+
 #: lib/kogrim_browser.lua:61
 msgid "et al."
 msgstr ""
@@ -197,8 +201,8 @@ msgstr ""
 msgid "paper"
 msgstr ""
 
-#: lib/kogrim_browser.lua:194 lib/kogrim_browser.lua:490
-#: lib/kogrim_browser.lua:509
+#: lib/kogrim_browser.lua:194 lib/kogrim_browser.lua:497
+#: lib/kogrim_browser.lua:519
 msgid "Loading…"
 msgstr ""
 
@@ -218,11 +222,11 @@ msgstr ""
 msgid "Physical book — nothing to download."
 msgstr ""
 
-#: lib/kogrim_browser.lua:321 lib/kogrim_download.lua:145
+#: lib/kogrim_browser.lua:321 lib/kogrim_download.lua:151
 msgid "Open"
 msgstr ""
 
-#: lib/kogrim_browser.lua:329 lib/kogrim_download.lua:149
+#: lib/kogrim_browser.lua:329 lib/kogrim_download.lua:155
 msgid "Download again"
 msgstr ""
 
@@ -250,115 +254,115 @@ msgstr ""
 msgid "%1 (%2)"
 msgstr ""
 
-#: lib/kogrim_browser.lua:451 lib/kogrim_browser.lua:499
+#: lib/kogrim_browser.lua:451 lib/kogrim_browser.lua:506
 msgid "No books here."
 msgstr ""
 
-#: lib/kogrim_browser.lua:474
+#: lib/kogrim_browser.lua:477
 msgid "Loading more…"
 msgstr ""
 
-#: lib/kogrim_browser.lua:515
+#: lib/kogrim_browser.lua:525
 msgid "Nothing here yet."
 msgstr ""
 
-#: lib/kogrim_browser.lua:532
+#: lib/kogrim_browser.lua:542
 msgid "Loading libraries…"
 msgstr ""
 
-#: lib/kogrim_browser.lua:536
+#: lib/kogrim_browser.lua:546
 msgid "Untitled library"
 msgstr ""
 
-#: lib/kogrim_browser.lua:539
+#: lib/kogrim_browser.lua:549
 msgid "Library"
 msgstr ""
 
-#: lib/kogrim_browser.lua:546
+#: lib/kogrim_browser.lua:556
 msgid "No libraries on this server."
 msgstr ""
 
-#: lib/kogrim_browser.lua:548 lib/kogrim_browser.lua:638
+#: lib/kogrim_browser.lua:558 lib/kogrim_browser.lua:648
 msgid "Libraries"
 msgstr ""
 
-#: lib/kogrim_browser.lua:553
+#: lib/kogrim_browser.lua:563
 msgid "Loading shelves…"
 msgstr ""
 
-#: lib/kogrim_browser.lua:557
+#: lib/kogrim_browser.lua:567
 msgid "Untitled shelf"
 msgstr ""
 
-#: lib/kogrim_browser.lua:560
+#: lib/kogrim_browser.lua:570
 msgid "Shelf"
 msgstr ""
 
-#: lib/kogrim_browser.lua:567
+#: lib/kogrim_browser.lua:577
 msgid "No shelves on this server."
 msgstr ""
 
-#: lib/kogrim_browser.lua:569 lib/kogrim_browser.lua:639
+#: lib/kogrim_browser.lua:579 lib/kogrim_browser.lua:649
 msgid "Shelves"
 msgstr ""
 
-#: lib/kogrim_browser.lua:583 lib/kogrim_browser.lua:658
+#: lib/kogrim_browser.lua:593 lib/kogrim_browser.lua:668
 msgid ""
 "Set up your Grimmory server first: Tools ▸ Grimmory ▸ Server and account."
 msgstr ""
 
-#: lib/kogrim_browser.lua:590
+#: lib/kogrim_browser.lua:600
 msgid "Search Grimmory"
 msgstr ""
 
-#: lib/kogrim_browser.lua:592
+#: lib/kogrim_browser.lua:602
 msgid "Title, author, series…"
 msgstr ""
 
-#: lib/kogrim_browser.lua:600
+#: lib/kogrim_browser.lua:610
 msgid "Search"
 msgstr ""
 
-#: lib/kogrim_browser.lua:607
+#: lib/kogrim_browser.lua:617
 msgid "Search: %1"
 msgstr ""
 
-#: lib/kogrim_browser.lua:625 lib/kogrim_browser.lua:627
+#: lib/kogrim_browser.lua:635 lib/kogrim_browser.lua:637
 msgid "Continue reading"
 msgstr ""
 
-#: lib/kogrim_browser.lua:632 lib/kogrim_browser.lua:634
+#: lib/kogrim_browser.lua:642 lib/kogrim_browser.lua:644
 msgid "Recently added"
 msgstr ""
 
-#: lib/kogrim_browser.lua:641 lib/kogrim_browser.lua:643
+#: lib/kogrim_browser.lua:651 lib/kogrim_browser.lua:653
 msgid "All books"
 msgstr ""
 
-#: lib/kogrim_download.lua:102
+#: lib/kogrim_download.lua:108
 msgid "Could not work out a filename for this book."
 msgstr ""
 
-#: lib/kogrim_download.lua:107
+#: lib/kogrim_download.lua:113
 msgid "Downloading %1…"
 msgstr ""
 
-#: lib/kogrim_download.lua:107
+#: lib/kogrim_download.lua:113
 msgid "book"
 msgstr ""
 
-#: lib/kogrim_download.lua:117
+#: lib/kogrim_download.lua:123
 msgid "Download failed: %1"
 msgstr ""
 
-#: lib/kogrim_download.lua:125
+#: lib/kogrim_download.lua:131
 msgid "Saved to %1"
 msgstr ""
 
-#: lib/kogrim_download.lua:143
+#: lib/kogrim_download.lua:149
 msgid "%1 is already downloaded."
 msgstr ""
 
-#: lib/kogrim_download.lua:144
+#: lib/kogrim_download.lua:150
 msgid "This book"
 msgstr ""

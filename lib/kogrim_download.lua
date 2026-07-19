@@ -71,10 +71,16 @@ function Download.fileName(book)
     return stem .. "." .. ext
 end
 
---- Absolute destination path for a book, or nil if it can't be named.
+--- Absolute destination path for a book, or nil if it can't be safely named.
 function Download.pathFor(book)
     local name = Download.fileName(book)
     if not name then return nil end
+    -- sanitise() replaces every separator, so "../../x" collapses to a single
+    -- harmless "..\_..\_x" filename. What it cannot fix is a name that is
+    -- ENTIRELY dots: "." and ".." survive intact and would resolve to the
+    -- download folder itself or its parent. Server-controlled input must never
+    -- be able to name a directory.
+    if name:match("^%.+$") then return nil end
     return Download.dir() .. "/" .. name
 end
 

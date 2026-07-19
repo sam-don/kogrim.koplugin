@@ -70,6 +70,23 @@ for _, m in ipairs{
     "socket/http", "ltn12", "socket", "socketutil", "rapidjson", "json",
 } do stub(m, noop_widget) end
 
+-- socket.url is real in KOReader (its OPDS plugin uses it), but luasocket is
+-- not installed for the test runner. Enough of parse() to exercise the origin
+-- comparison that decides whether a redirect may carry credentials.
+stub("socket.url", {
+    parse = function(u)
+        local scheme, rest = tostring(u or ""):match("^(%a[%w+.%-]*)://(.*)$")
+        if not scheme then return {} end
+        local authority = rest:match("^([^/?#]*)") or ""
+        local host, port = authority:match("^(.+):(%d+)$")
+        return { scheme = scheme, host = host or authority, port = port }
+    end,
+    absolute = function(base, location)
+        if location:match("^%a[%w+.%-]*://") then return location end
+        return (base:match("^(%a[%w+.%-]*://[^/]+)") or "") .. location
+    end,
+})
+
 _G.G_reader_settings = {
     readSetting = function(_, k)
         if k == "home_dir" then return "/mnt/us/books" end
@@ -230,6 +247,32 @@ eq(B.titleOf{ primaryFileName = "Bleach v20 (2007) (Digital) (AnHeroGold-Em - Un
 eq(B.titleOf{ title = "", primaryFileName = "x.epub" }, "x", "empty title is not a title")
 eq(B.titleOf{}, nil, "nothing to go on")
 eq(B.bookRowText{ primaryFileName = "Dune.epub" }, "Dune", "row uses the fallback")
+
+-- primaryFileName is server-controlled and becomes a path on the user's device.
+print("== filenames cannot escape the download folder ==")
+eq(Download.pathFor{ primaryFileName = "../../.adds/koreader/settings/evil.lua" },
+   "/mnt/us/Books/Grim/.._.._.adds_koreader_settings_evil.lua",
+   "traversal is flattened, not followed")
+eq(Download.pathFor{ primaryFileName = "/etc/passwd" },
+   "/mnt/us/Books/Grim/_etc_passwd", "absolute path is neutralised")
+eq(Download.pathFor{ primaryFileName = "a\\..\\b.epub" },
+   "/mnt/us/Books/Grim/a_.._b.epub", "backslashes too")
+eq(Download.fileName{ primaryFileName = ".." }, "..",
+   "bare .. survives sanitising -- see the guard in Download.pathFor")
+eq(Download.pathFor{ primaryFileName = ".." }, nil, "...so pathFor refuses it")
+eq(Download.pathFor{ primaryFileName = "." }, nil, "and refuses .")
+
+-- Credentials must never be carried to another host by a redirect.
+print("== redirect origin checks ==")
+eq(Http.sameOrigin("https://a.example/x", "https://a.example/y"), true, "same host")
+eq(Http.sameOrigin("https://a.example/x", "https://evil.example/y"), false,
+   "different host")
+eq(Http.sameOrigin("https://a.example/x", "http://a.example/y"), false,
+   "scheme change is a different origin")
+eq(Http.sameOrigin("https://a.example:8443/x", "https://a.example/y"), false,
+   "port change is a different origin")
+eq(Http.sameOrigin("https://a.example/x", "https://A.EXAMPLE/y"), true,
+   "host comparison is case-insensitive")
 
 print("== row text ==")
 eq(B.bookRowText{ title = "No Bad Kids", authors = {"Janet Lansbury"} },

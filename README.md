@@ -75,7 +75,23 @@ Dispatcher (Settings ▸ Gesture manager), where they appear as *Grimmory: brows
 | Books loaded at a time | 100 — lower it on a slow connection |
 | Open books after downloading | on |
 
-## Credentials are stored in plain text
+## Security notes
+
+Read these before pointing kogrim at a server you care about.
+
+### KOReader does not verify TLS certificates
+
+This is a KOReader platform limitation, not something this plugin can fix. LuaSec's
+`ssl.https` defaults to `verify = "none"`, KOReader ships no CA bundle, and its own HTTP client
+sets `verify_ca = false`. So **HTTPS here gives you encryption but not authentication**: the
+traffic is unreadable to a passive eavesdropper, but an active attacker who can intercept your
+connection can present any certificate and read everything — including your password on login.
+
+In practice that means: fine on your home network, and fine over the internet against a server
+you control. Be aware of it on public Wi-Fi. If that matters to you, reach your server over a
+VPN or Tailscale rather than exposing it publicly.
+
+### Credentials are stored in plain text
 
 Your Grimmory username, password and session tokens live in
 `<koreader>/settings/kogrim.lua`, unencrypted. There is no keychain on these devices, and this
@@ -86,6 +102,18 @@ account for the device if that matters to you.
 The password is kept (not just the tokens) because it is what lets kogrim recover silently
 when a session expires. **Sign out** clears the password and the tokens, keeping only the URL
 and username.
+
+### What the plugin does defend against
+
+- **Redirects never carry your token off-origin.** kogrim follows redirects itself rather than
+  letting LuaSocket do it, because LuaSocket forwards headers verbatim to whatever host a
+  `Location` names. A hop to a different scheme, host or port drops the `Authorization` header
+  first; HTTPS-to-HTTP redirects are refused outright.
+- **Server-supplied filenames cannot escape the download folder.** Separators are replaced and
+  names consisting only of dots are rejected, so a hostile `primaryFileName` can't write
+  outside the download directory.
+- **Book ids are validated as integers** before being concatenated into a request path.
+- **Nothing sensitive is logged.** No credential or token reaches `crash.log`.
 
 ## Development
 
