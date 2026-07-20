@@ -35,6 +35,24 @@ local DEFAULTS = {
     -- browsing never hits a boundary, small enough to stay quick on Wi-Fi.
     page_size          = 100,
     open_after_download = true,
+    -- Cover art in the book detail sheet. On by default -- it is one small
+    -- request, cached on disk afterwards -- but worth a switch for anyone
+    -- browsing over a connection where every request is felt.
+    show_covers        = true,
+    -- How book lists are drawn: "text" (stock rows), "list" (rows with a
+    -- thumbnail) or "grid" (a mosaic of covers). Defaults to text so an
+    -- upgrade does not silently change how the plugin looks, and so the
+    -- cover-fetching path is opt-in for anyone on a slow connection.
+    list_view_mode     = "text",
+    -- Grid geometry, per orientation. Landscape gets more columns and fewer
+    -- rows -- the portrait numbers there would give tall, mostly-empty tiles.
+    grid_cols          = 3,
+    grid_rows          = 3,
+    grid_cols_landscape = 4,
+    grid_rows_landscape = 2,
+    -- Rows per page in the thumbnail list. Fewer than the text list's ~14,
+    -- because each row now has to be tall enough for a recognisable cover.
+    list_rows          = 6,
     default_sort       = "title",
     default_dir        = "asc",
 }

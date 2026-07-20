@@ -9,6 +9,7 @@ All behaviour lives in lib/:
     lib/kogrim_api.lua        Grimmory endpoints + JWT lifecycle
     lib/kogrim_account.lua    the server/credentials sheet
     lib/kogrim_download.lua   filenames, destinations, download UX
+    lib/kogrim_covers.lua     cover URLs and the on-disk cover cache
     lib/kogrim_browser.lua    the browse UI
 
 is_doc_only = false: the plugin must load in the FileManager (where browsing
@@ -230,6 +231,37 @@ function KoGrim:settingsMenu()
                         if touchmenu_instance then touchmenu_instance:updateItems() end
                     end,
                 })
+            end,
+        },
+        {
+            text_func = function()
+                local modes = {
+                    text = _("Text list"),
+                    list = _("List with covers"),
+                    grid = _("Cover grid"),
+                }
+                local m = Settings.read("list_view_mode")
+                return T(_("Show books as: %1"), modes[m] or modes.text)
+            end,
+            help_text = _("How book lists are drawn. The same switch is on the book list's title bar."),
+            keep_menu_open = true,
+            callback = function(touchmenu_instance)
+                local order = { "text", "list", "grid" }
+                local current = Settings.read("list_view_mode")
+                local next_i = 1
+                for i, m in ipairs(order) do
+                    if m == current then next_i = (i % #order) + 1 end
+                end
+                Settings.save("list_view_mode", order[next_i])
+                if touchmenu_instance then touchmenu_instance:updateItems() end
+            end,
+        },
+        {
+            text = _("Show cover art"),
+            help_text = _("Show a book's cover in its detail sheet. Covers are downloaded once and kept in KOReader's cache folder."),
+            checked_func = function() return Settings.nilOrTrue("show_covers") end,
+            callback = function()
+                Settings.save("show_covers", not Settings.nilOrTrue("show_covers"))
             end,
         },
         {

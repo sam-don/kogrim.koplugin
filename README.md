@@ -11,8 +11,8 @@ plugin already does that and you don't need this.)
 
 ## Status
 
-v0.1.0 — browse and download. Reading-progress sync back to Grimmory, cover thumbnails and
-shelf editing are not implemented yet.
+v0.1.0 — browse, download, and cover art in the detail sheet, the book lists and a grid view.
+Reading-progress sync back to Grimmory and shelf editing are not implemented yet.
 
 ## Install
 
@@ -56,8 +56,16 @@ URL (`https://…`), username and password, and kogrim will verify the login imm
 - **All books** — the whole catalogue
 - **Search** — free-text over title, author and series
 
-Tap a book for details and a Download button. **Long-press a book to download it immediately**,
-skipping the detail sheet. A `✓` in the right-hand column means the file is already in your
+Tap a book for details, its cover, and a Download button. **Long-press a book to download it
+immediately**, skipping the detail sheet.
+
+Book lists can be drawn three ways, switched from the **view button at the left of the title
+bar** (or Settings ▸ Show books as): a plain text list, a list with a thumbnail on each row, or
+a grid of covers. The text list stays the default so an upgrade doesn't change how the plugin
+looks, and so the extra requests are opt-in. Covers arrive *after* the page draws — the list is
+usable immediately and fills in behind you, one cover at a time, with a single redraw at the
+end rather than a flicker per cover. Books the server has no artwork for get a panel with the
+title and author set in text. A `✓` in the right-hand column means the file is already in your
 download folder; `paper` means it's a physical book with no file to fetch.
 
 Lists page continuously. Books are fetched from the server in batches, but you just turn pages
@@ -74,7 +82,19 @@ Dispatcher (Settings ▸ Gesture manager), where they appear as *Grimmory: brows
 |---|---|
 | Download folder | `<your home folder>/Grimmory` |
 | Books loaded at a time | 100 — lower it on a slow connection |
+| Show books as | Text list — or *List with covers* / *Cover grid* |
+| Show cover art | on |
 | Open books after downloading | on |
+
+Covers are downloaded once and cached under `<koreader>/cache/kogrim-covers`, keyed by the
+server's `coverUpdatedOn` so replaced artwork is picked up automatically. The cache is capped
+at 400 files and prunes itself oldest-first; deleting it by hand costs nothing but a re-fetch.
+
+They are fetched from `/api/v1/media/book/{id}/thumbnail`, falling back to `.../cover`.
+**Grimmory's own `thumbnailUrl` field is deliberately unused**: `AppBookMapper.mapThumbnailUrl`
+hardcodes `/api/books/{id}/cover`, which no controller is mapped to, so the request falls
+through to the Angular frontend's catch-all and returns `index.html` with a 200 status. Any
+client trusting that field gets 2.3 KB of HTML instead of a picture.
 
 ## Security notes
 
@@ -114,6 +134,10 @@ and username.
   names consisting only of dots are rejected, so a hostile `primaryFileName` can't write
   outside the download directory.
 - **Book ids are validated as integers** before being concatenated into a request path.
+- **Cover URLs are built, not taken from the server.** The `thumbnailUrl` field in Grimmory's
+  responses is ignored (it points at a route that doesn't exist — see below), and cover paths
+  are constructed from the validated integer book id instead. So no server-supplied URL ever
+  receives a request carrying your token.
 - **Nothing sensitive is logged.** No credential or token reaches `crash.log`.
 
 ## Development

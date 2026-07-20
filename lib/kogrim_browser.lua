@@ -21,6 +21,8 @@ local Api         = require("lib/kogrim_api")
 local Http        = require("lib/kogrim_http")
 local Settings    = require("lib/kogrim_settings")
 local Download    = require("lib/kogrim_download")
+local Covers      = require("lib/kogrim_covers")
+local Queue       = require("lib/kogrim_cover_queue")
 local _           = require("lib/kogrim_i18n").gettext
 local T           = require("ffi/util").template
 
@@ -227,10 +229,63 @@ local function currentLevel()
     return _self.stack[#_self.stack]
 end
 
+-- ---------------------------------------------------------------------------
+-- View modes
+-- ---------------------------------------------------------------------------
+-- Book lists can be drawn three ways: as text rows (stock Menu), as rows with a
+-- thumbnail, or as a grid of covers. The two cover modes are implemented by
+-- swapping methods onto the live Menu instance -- see kogrim_cover_menu.lua for
+-- why that is the seam and what it depends on.
+
+local VIEW_MODES = { text = true, list = true, grid = true }
+
+local function viewMode()
+    local m = Settings.read("list_view_mode")
+    return VIEW_MODES[m] and m or "text"
+end
+
+--- Point the Menu at whichever renderer the CURRENT LEVEL wants.
+--
+-- Deliberately per-level, not global: the hub, Libraries and Shelves are lists
+-- of names with no artwork behind them, so a grid of placeholder panels reading
+-- "Fiction", "Sci-Fi" would be worse than the text they replace. Only levels
+-- built from bookRows opt in, by setting is_books.
+local function applyViewMode()
+    if not _self or _self.closed then return end
+    local lvl = currentLevel()
+    local mode = (lvl and lvl.is_books) and viewMode() or "text"
+    if _self.applied_mode == mode then return end
+    _self.applied_mode = mode
+
+    local menu = _self.menu
+    if mode == "text" then
+        -- Clearing the instance fields lets lookup fall through to the Menu
+        -- class again, restoring stock behaviour exactly.
+        menu.updateItems         = nil
+        menu._recalculateDimen   = nil
+        menu._updateItemsBuildUI = nil
+    else
+        local CoverMenu = require("lib/kogrim_cover_menu")
+        local Renderer  = (mode == "grid")
+            and require("lib/kogrim_grid_menu")
+            or  require("lib/kogrim_list_menu")
+        menu.updateItems         = CoverMenu.updateItems
+        menu._recalculateDimen   = Renderer._recalculateDimen
+        menu._updateItemsBuildUI = Renderer._updateItemsBuildUI
+    end
+end
+
+-- Any change of level invalidates whatever the cover queue was fetching: it
+-- was working on a page the user has just left.
+local function leaveLevel()
+    Queue.cancel()
+end
+
 local function renderCurrent()
     if not _self or _self.closed then return end
     local lvl = currentLevel()
     if not lvl then return end
+    applyViewMode()
     -- switchItemTable resets to page 1, so save the Menu page and put it back.
     local saved = _self.menu.page
     _self.menu:switchItemTable(lvl.title, lvl.rows)
@@ -243,11 +298,13 @@ local function push(level)
     -- The browser can be closed while a fetch is still in flight; the response
     -- must not resurrect a torn-down Menu.
     if not _self or _self.closed then return end
+    leaveLevel()
     local parent = currentLevel()
     if parent then parent.menu_page = _self.menu.page end
     _self.stack[#_self.stack + 1] = level
     -- paths drives the title bar's return-arrow enabled state (menu.lua:1040).
     _self.menu.paths[#_self.menu.paths + 1] = { title = level.title }
+    applyViewMode()
     _self.menu:switchItemTable(level.title, level.rows)
 end
 
@@ -255,6 +312,7 @@ local function pop()
     if not _self or _self.closed then return end
     -- Backing out of the root is how the user closes the browser.
     if #_self.stack <= 1 then Browser.close() return end
+    leaveLevel()
     table.remove(_self.stack)
     table.remove(_self.menu.paths)
     local parent = currentLevel()
@@ -275,17 +333,137 @@ local function replaceCurrent(title, rows)
     if _self.menu.paths[#_self.menu.paths] then
         _self.menu.paths[#_self.menu.paths].title = lvl.title
     end
+    applyViewMode()
     _self.menu:switchItemTable(lvl.title, lvl.rows)
+end
+
+--- Switch view mode from the title bar, then redraw the level in place.
+local function chooseViewMode()
+    if not _self or _self.closed then return end
+    local ButtonDialog = require("ui/widget/buttondialog")
+    local dialog
+    local function pick(mode)
+        return function()
+            UIManager:close(dialog)
+            Settings.save("list_view_mode", mode)
+            -- Cached buffers are all the wrong size for the new mode, and the
+            -- old page's fetch run is no longer relevant.
+            Queue.cancel()
+            require("lib/kogrim_cover_cache").clear()
+            _self.applied_mode = nil
+            renderCurrent()
+        end
+    end
+    local current = viewMode()
+    local function label(text, mode)
+        return (current == mode) and ("• " .. text) or text
+    end
+    dialog = ButtonDialog:new{
+        title       = _("Show books as"),
+        title_align = "center",
+        buttons = {
+            {{ text = label(_("Text list"),        "text"), callback = pick("text") }},
+            {{ text = label(_("List with covers"), "list"), callback = pick("list") }},
+            {{ text = label(_("Cover grid"),       "grid"), callback = pick("grid") }},
+            {{ text = _("Cancel"), callback = function() UIManager:close(dialog) end }},
+        },
+    }
+    UIManager:show(dialog)
 end
 
 -- ---------------------------------------------------------------------------
 -- Book detail sheet
 -- ---------------------------------------------------------------------------
 
+-- The cover's ideal size, in pixels: a share of the screen's SHORT edge, which
+-- is what the dialog's own width tracks, so it keeps its proportion of the
+-- sheet in either orientation.
+--
+-- This is only the ceiling. What the cover actually gets is whatever vertical
+-- room is left once the title, the metadata and the buttons have had theirs --
+-- see the height budget in showBookDetail. A book with a six-line title and
+-- four buttons must not push Download off the bottom of the screen for the
+-- sake of a picture.
+local function coverIdealSize()
+    local Screen = require("device").screen
+    local short = math.min(Screen:getWidth(), Screen:getHeight())
+    return math.floor(short * 0.40), math.floor(Screen:getHeight() * 0.32)
+end
+
+-- Below this, a cover is a smudge rather than a thing you recognise, so it is
+-- dropped entirely and the sheet goes back to being text.
+local COVER_MIN_HEIGHT = 80
+
+-- An ImageWidget for a cached cover file, sized to fit max_w x max_h with its
+-- aspect ratio intact.
+--
+-- This does NOT validate the file, and cannot: a badly-named file makes
+-- ImageWidget:_loadfile raise, but a well-named one that fails to DECODE is
+-- silently replaced with RenderImage:renderCheckerboard, which is a perfectly
+-- ordinary widget of exactly the size asked for -- indistinguishable from a
+-- real cover from out here, and the reason a checkerboard square shipped in
+-- the first version of this. Whether the bytes are an image is settled in
+-- kogrim_covers.lua before they are ever cached; the pcall below is only
+-- insurance against the raising case.
+--
+-- The widget is built twice on purpose. The first one is a probe: asking it
+-- for its natural size is the only way to learn the image's real proportions.
+-- That probe is not a wasted decode: with scale_factor set, _loadfile leaves
+-- width and height out of its ImageCache hash, so the probe and the real
+-- widget below hit the same cache entry and the file is decoded exactly once.
+-- If that ever stops holding upstream, the cost is a second decode of one
+-- small image -- not a wrong result.
+local function coverWidget(path, max_w, max_h)
+    local ImageWidget = require("ui/widget/imagewidget")
+    local ok, natural = pcall(function()
+        local probe = ImageWidget:new{ file = path }
+        local size = probe:getSize()
+        -- Hands back the cached blitbuffer without touching it: _bb_disposable
+        -- is false for anything that came out of ImageCache, so this frees
+        -- nothing that the real widget is about to reuse. (This is the same
+        -- hazard bookshelf.koplugin/lib/bookshelf_scaled_cover_cache.lua warns
+        -- about at length -- avoided here by never owning a buffer at all.)
+        probe:free()
+        return { w = size.w, h = size.h }
+    end)
+    if not ok or not natural or natural.w <= 0 or natural.h <= 0 then return nil end
+
+    local scale = math.min(max_w / natural.w, max_h / natural.h)
+    -- Never upscale. Grimmory serves whatever the source had, and a 90px
+    -- placeholder stretched to fill the box looks markedly worse than the same
+    -- image left small and sharp.
+    if scale > 1 then scale = 1 end
+    return ImageWidget:new{
+        file         = path,
+        width        = math.floor(natural.w * scale),
+        height       = math.floor(natural.h * scale),
+        scale_factor = 0,
+    }
+end
+
 local function showBookDetail(summary)
     withSpinner(_("Loading book…"),
-        function() return Api.getBookDetail(summary.id) end,
-        function(book)
+        function()
+            local detail, err = Api.getBookDetail(summary.id)
+            if not detail then return nil, err end
+            -- The cover is fetched in the SAME worker as the detail, not after
+            -- the sheet is up. It costs a beat on a cache miss, but the spinner
+            -- is already showing to absorb it -- and the alternative, patching
+            -- a live ButtonDialog when the download lands, means holding a
+            -- reference to a widget across a network call that the user can
+            -- close out from under us.
+            local cover
+            if Settings.nilOrTrue("show_covers") then
+                -- The detail DTO, for its coverUpdatedOn -- the cover URL is
+                -- built from the book id, so which record it comes from only
+                -- affects the cache key, and the detail's is the fresher one.
+                cover = Covers.fetch(detail)
+            end
+            return { book = detail, cover = cover }
+        end,
+        function(result)
+            local book = result.book
+            local cover_path = result.cover
             local ButtonDialog = require("ui/widget/buttondialog")
             local lines = {}
             local author = authorsOf(book) or authorsOf(summary)
@@ -362,13 +540,72 @@ local function showBookDetail(summary)
             }}
 
             local heading = titleOf(book) or titleOf(summary) or _("Book")
-            dialog = ButtonDialog:new{
-                title = (#lines > 0)
-                    and (heading .. "\n\n" .. table.concat(lines, "\n"))
-                    or heading,
-                title_align = "center",
-                buttons = buttons,
+            local caption = (#lines > 0)
+                and (heading .. "\n\n" .. table.concat(lines, "\n"))
+                or heading
+
+            -- `title` is deliberately NOT passed to ButtonDialog. Its
+            -- addWidget appends UNDERNEATH the title, and a book's picture
+            -- belongs above its name, not below it -- so the title text is
+            -- built by hand as the second row of the added group instead, with
+            -- the same font ButtonDialog would have used (info_face, since
+            -- use_info_style defaults on).
+            dialog = ButtonDialog:new{ buttons = buttons }
+
+            local VerticalGroup = require("ui/widget/verticalgroup")
+            local VerticalSpan  = require("ui/widget/verticalspan")
+            local TextBoxWidget = require("ui/widget/textboxwidget")
+            local Font          = require("ui/font")
+            local Size          = require("ui/size")
+            local Screen        = require("device").screen
+
+            -- Available width is only known after ButtonDialog:init has sized
+            -- the button table, which is why the dialog is constructed first.
+            local avail = dialog:getAddedWidgetAvailableWidth()
+            local caption_widget = TextBoxWidget:new{
+                text      = caption,
+                width     = avail,
+                face      = Font:getFace("infofont"),
+                alignment = "center",
             }
+
+            local group = VerticalGroup:new{ align = "center" }
+            if cover_path then
+                -- Vertical budget: what is left of the screen once the buttons
+                -- and the caption have taken theirs. Both are already sized at
+                -- this point, so this is measured, not estimated -- the only
+                -- guess is the allowance for the dialog's own borders,
+                -- margins and paddings, kept deliberately generous.
+                --
+                -- The caption is the reason this matters: TextBoxWidget does
+                -- not scroll here, so a book with a very long title genuinely
+                -- can fill the sheet on its own, and when it does the cover has
+                -- to give way rather than push the buttons off the bottom.
+                local ideal_w, ideal_h = coverIdealSize()
+                local chrome = 6 * Size.padding.large
+                local budget = Screen:getHeight()
+                    - dialog.buttontable:getSize().h
+                    - caption_widget:getSize().h
+                    - chrome
+                local max_h = math.min(ideal_h, budget)
+                if max_h >= COVER_MIN_HEIGHT then
+                    local cover = coverWidget(cover_path, math.min(ideal_w, avail), max_h)
+                    if cover then
+                        group[#group + 1] = cover
+                        group[#group + 1] = VerticalSpan:new{ width = Size.padding.large }
+                    end
+                end
+            end
+            group[#group + 1] = caption_widget
+            -- not_focusable keeps the group out of the dialog's key-navigation
+            -- layout (it holds nothing tappable); parent is what
+            -- ButtonDialog:reinit uses to tell added widgets apart from the
+            -- title it built itself, so that a future second addWidget call
+            -- re-adds this group instead of duplicating it.
+            group.not_focusable = true
+            group.parent = dialog
+            dialog:addWidget(group)
+
             UIManager:show(dialog)
         end)
 end
@@ -389,6 +626,15 @@ local function bookRows(books, rebuild)
         rows[#rows + 1] = {
             text      = bookRowText(book),
             mandatory = bookRowMandatory(book),
+            -- kg_* fields are what the cover views render from. They are
+            -- namespaced because a Menu row is Menu's table, not ours, and a
+            -- plain `title` or `book` key could collide with something Menu
+            -- grows later. Precomputed here rather than in the renderers so
+            -- that all book formatting stays in one file.
+            kg_book     = book,
+            kg_title    = titleOf(book) or _("Untitled"),
+            kg_author   = authorsOf(book),
+            kg_is_local = Download.isLocal(book),
             callback  = function() showBookDetail(book) end,
             -- Long-press skips the detail sheet: the common case is "I know I
             -- want this one", and the sheet costs an extra API round trip.
@@ -505,7 +751,7 @@ local function showPagedList(title, fetch)
             if #rows == 0 then
                 rows[1] = { text = _("No books here."), select_enabled = false }
             end
-            level = { title = heading(), rows = rows, load_more = loadMore }
+            level = { title = heading(), rows = rows, load_more = loadMore, is_books = true }
             push(level)
             -- If the whole first batch fits on one screen there is no page to
             -- turn, so the prefetch hook would never get a chance to fire.
@@ -527,7 +773,7 @@ local function showSimpleList(title, fetch)
             if mode == "replace" then
                 replaceCurrent(title, rows)
             else
-                push{ title = title, rows = rows }
+                push{ title = title, rows = rows, is_books = true }
             end
         end
         render()
@@ -676,6 +922,10 @@ function Browser.show()
     local root = { title = _("Grimmory"), rows = hubRows() }
     _self = { stack = { root }, closed = false }
 
+    -- Covers that failed to download last time are worth one more try when the
+    -- browser is reopened -- artwork may have been added on the server since.
+    Queue.forgetFailures()
+
     _self.menu = Menu:new{
         title         = root.title,
         item_table    = root.rows,
@@ -684,6 +934,9 @@ function Browser.show()
         is_borderless = true,
         is_popout     = false,
         onReturn      = function() pop() end,
+        -- The view switcher. Present on every level for a stable title bar,
+        -- but it only does anything on a level that shows books.
+        title_bar_left_icon = "appbar.pageview",
         -- close_callback is deliberately NOT set: Menu:onMenuSelect fires it
         -- after every leaf item tap (menu.lua:1360), which would tear the
         -- browser down the moment the user opened a book. Closing is routed
@@ -712,6 +965,19 @@ function Browser.show()
     -- Every close route (tap-outside, back-out past the root, the Home
     -- gesture) funnels into the one close path.
     _self.menu.onCloseAllMenus = function() Browser.close() return true end
+    -- Menu:onLeftButtonTap exists to be overridden by the caller (menu.lua:1536).
+    _self.menu.onLeftButtonTap = function()
+        local lvl = currentLevel()
+        if lvl and lvl.is_books then
+            chooseViewMode()
+        else
+            UIManager:show(InfoMessage:new{
+                text = _("Open a book list first — this switches how books are shown."),
+                timeout = 2,
+            })
+        end
+        return true
+    end
     -- Menu's MenuItem:onHoldSelect calls menu:onMenuHold(entry) with the row.
     _self.menu.onMenuHold = function(_menu, row)
         if row and row.hold_callback then row.hold_callback() end
@@ -739,6 +1005,11 @@ end
 function Browser.close()
     if not _self or _self.closed then return end
     _self.closed = true
+    -- Stop the cover run, and mark the menu so that any completion callback
+    -- already past its own cancel check bails instead of repainting a menu
+    -- that UIManager has torn down.
+    Queue.cancel()
+    _self.menu.kg_closed = true
     UIManager:close(_self.menu)
     _self = nil
 end

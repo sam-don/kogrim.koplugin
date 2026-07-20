@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: kogrim 0.1.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-07-20 10:40+1000\n"
+"POT-Creation-Date: 2026-07-20 19:55+1000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -17,7 +17,7 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: _meta.lua:15 main.lua:98 lib/kogrim_browser.lua:676
+#: _meta.lua:15 lib/kogrim_browser.lua:922 main.lua:99
 msgid "Grimmory"
 msgstr ""
 
@@ -26,81 +26,6 @@ msgid ""
 "Browse and download books from a self-hosted Grimmory library. Uses "
 "Grimmory's app API, so lists carry read status, reading progress and series "
 "information rather than a bare OPDS catalogue."
-msgstr ""
-
-#: main.lua:57
-msgid "Grimmory: browse library"
-msgstr ""
-
-#: main.lua:63
-msgid "Grimmory: search"
-msgstr ""
-
-#: main.lua:111
-msgid "Browse library"
-msgstr ""
-
-#: main.lua:119 lib/kogrim_browser.lua:658
-msgid "Search…"
-msgstr ""
-
-#: main.lua:129
-msgid "Server and account: %1"
-msgstr ""
-
-#: main.lua:137
-msgid "Test connection"
-msgstr ""
-
-#: main.lua:143
-msgid "Settings"
-msgstr ""
-
-#: main.lua:148
-msgid "Sign out"
-msgstr ""
-
-#: main.lua:156
-msgid "About Grimmory"
-msgstr ""
-
-#: main.lua:161
-msgid ""
-"kogrim %1\n"
-"\n"
-"Browse and download books from a self-hosted Grimmory library.\n"
-"\n"
-"Settings are stored in:\n"
-"%2\n"
-"\n"
-"Note: your Grimmory password is stored there in plain text, as KOReader has "
-"no keychain on these devices."
-msgstr ""
-
-#: main.lua:183
-msgid "Download folder: %1"
-msgstr ""
-
-#: main.lua:210
-msgid "Books loaded at a time: %1"
-msgstr ""
-
-#: main.lua:216
-msgid "Books loaded at a time"
-msgstr ""
-
-#: main.lua:220
-msgid ""
-"How many books to fetch from the server at once. Higher means fewer pauses "
-"while scrolling; lower is quicker on a slow connection."
-msgstr ""
-
-#: main.lua:227
-msgid "Set"
-msgstr ""
-
-#: main.lua:236
-msgid "Open books after downloading"
 msgstr ""
 
 #: lib/kogrim_account.lua:27
@@ -137,7 +62,8 @@ msgstr ""
 msgid "Password"
 msgstr ""
 
-#: lib/kogrim_account.lua:99 lib/kogrim_browser.lua:605
+#: lib/kogrim_account.lua:99 lib/kogrim_browser.lua:368
+#: lib/kogrim_browser.lua:851
 msgid "Cancel"
 msgstr ""
 
@@ -181,162 +107,186 @@ msgstr ""
 msgid "That book has an unusable id."
 msgstr ""
 
-#: lib/kogrim_browser.lua:61
+#: lib/kogrim_browser.lua:63
 msgid "et al."
 msgstr ""
 
-#: lib/kogrim_browser.lua:125
+#: lib/kogrim_browser.lua:127
 msgid "read"
 msgstr ""
 
-#: lib/kogrim_browser.lua:126
+#: lib/kogrim_browser.lua:128
 msgid "reading"
 msgstr ""
 
-#: lib/kogrim_browser.lua:147
+#: lib/kogrim_browser.lua:149 lib/kogrim_browser.lua:635
 msgid "Untitled"
 msgstr ""
 
-#: lib/kogrim_browser.lua:175
+#: lib/kogrim_browser.lua:177
 msgid "paper"
 msgstr ""
 
-#: lib/kogrim_browser.lua:194 lib/kogrim_browser.lua:497
-#: lib/kogrim_browser.lua:519
+#: lib/kogrim_browser.lua:196 lib/kogrim_browser.lua:743
+#: lib/kogrim_browser.lua:765
 msgid "Loading…"
 msgstr ""
 
-#: lib/kogrim_browser.lua:286
+#: lib/kogrim_browser.lua:362
+msgid "Show books as"
+msgstr ""
+
+#: lib/kogrim_browser.lua:365 main.lua:239
+msgid "Text list"
+msgstr ""
+
+#: lib/kogrim_browser.lua:366 main.lua:240
+msgid "List with covers"
+msgstr ""
+
+#: lib/kogrim_browser.lua:367 main.lua:241
+msgid "Cover grid"
+msgstr ""
+
+#: lib/kogrim_browser.lua:445
 msgid "Loading book…"
 msgstr ""
 
-#: lib/kogrim_browser.lua:302
+#: lib/kogrim_browser.lua:480
 msgid "%1 pages"
 msgstr ""
 
-#: lib/kogrim_browser.lua:309
+#: lib/kogrim_browser.lua:487
 msgid "Progress: %1"
 msgstr ""
 
-#: lib/kogrim_browser.lua:318
+#: lib/kogrim_browser.lua:496
 msgid "Physical book — nothing to download."
 msgstr ""
 
-#: lib/kogrim_browser.lua:321 lib/kogrim_download.lua:151
+#: lib/kogrim_browser.lua:499 lib/kogrim_download.lua:151
 msgid "Open"
 msgstr ""
 
-#: lib/kogrim_browser.lua:329 lib/kogrim_download.lua:155
+#: lib/kogrim_browser.lua:507 lib/kogrim_download.lua:155
 msgid "Download again"
 msgstr ""
 
-#: lib/kogrim_browser.lua:337
+#: lib/kogrim_browser.lua:515
 msgid "Download"
 msgstr ""
 
-#: lib/kogrim_browser.lua:348 lib/kogrim_browser.lua:352
+#: lib/kogrim_browser.lua:526 lib/kogrim_browser.lua:530
 msgid "Description"
 msgstr ""
 
-#: lib/kogrim_browser.lua:360
+#: lib/kogrim_browser.lua:538
 msgid "Close"
 msgstr ""
 
-#: lib/kogrim_browser.lua:364
+#: lib/kogrim_browser.lua:542
 msgid "Book"
 msgstr ""
 
-#: lib/kogrim_browser.lua:398
+#: lib/kogrim_browser.lua:644
 msgid "That is a physical book — there is no file to download."
 msgstr ""
 
-#: lib/kogrim_browser.lua:441
+#: lib/kogrim_browser.lua:687
 msgid "%1 (%2)"
 msgstr ""
 
-#: lib/kogrim_browser.lua:451 lib/kogrim_browser.lua:506
+#: lib/kogrim_browser.lua:697 lib/kogrim_browser.lua:752
 msgid "No books here."
 msgstr ""
 
-#: lib/kogrim_browser.lua:477
+#: lib/kogrim_browser.lua:723
 msgid "Loading more…"
 msgstr ""
 
-#: lib/kogrim_browser.lua:525
+#: lib/kogrim_browser.lua:771
 msgid "Nothing here yet."
 msgstr ""
 
-#: lib/kogrim_browser.lua:542
+#: lib/kogrim_browser.lua:788
 msgid "Loading libraries…"
 msgstr ""
 
-#: lib/kogrim_browser.lua:546
+#: lib/kogrim_browser.lua:792
 msgid "Untitled library"
 msgstr ""
 
-#: lib/kogrim_browser.lua:549
+#: lib/kogrim_browser.lua:795
 msgid "Library"
 msgstr ""
 
-#: lib/kogrim_browser.lua:556
+#: lib/kogrim_browser.lua:802
 msgid "No libraries on this server."
 msgstr ""
 
-#: lib/kogrim_browser.lua:558 lib/kogrim_browser.lua:648
+#: lib/kogrim_browser.lua:804 lib/kogrim_browser.lua:894
 msgid "Libraries"
 msgstr ""
 
-#: lib/kogrim_browser.lua:563
+#: lib/kogrim_browser.lua:809
 msgid "Loading shelves…"
 msgstr ""
 
-#: lib/kogrim_browser.lua:567
+#: lib/kogrim_browser.lua:813
 msgid "Untitled shelf"
 msgstr ""
 
-#: lib/kogrim_browser.lua:570
+#: lib/kogrim_browser.lua:816
 msgid "Shelf"
 msgstr ""
 
-#: lib/kogrim_browser.lua:577
+#: lib/kogrim_browser.lua:823
 msgid "No shelves on this server."
 msgstr ""
 
-#: lib/kogrim_browser.lua:579 lib/kogrim_browser.lua:649
+#: lib/kogrim_browser.lua:825 lib/kogrim_browser.lua:895
 msgid "Shelves"
 msgstr ""
 
-#: lib/kogrim_browser.lua:593 lib/kogrim_browser.lua:668
+#: lib/kogrim_browser.lua:839 lib/kogrim_browser.lua:914
 msgid ""
 "Set up your Grimmory server first: Search ▸ Grimmory ▸ Server and account."
 msgstr ""
 
-#: lib/kogrim_browser.lua:600
+#: lib/kogrim_browser.lua:846
 msgid "Search Grimmory"
 msgstr ""
 
-#: lib/kogrim_browser.lua:602
+#: lib/kogrim_browser.lua:848
 msgid "Title, author, series…"
 msgstr ""
 
-#: lib/kogrim_browser.lua:610
+#: lib/kogrim_browser.lua:856
 msgid "Search"
 msgstr ""
 
-#: lib/kogrim_browser.lua:617
+#: lib/kogrim_browser.lua:863
 msgid "Search: %1"
 msgstr ""
 
-#: lib/kogrim_browser.lua:635 lib/kogrim_browser.lua:637
+#: lib/kogrim_browser.lua:881 lib/kogrim_browser.lua:883
 msgid "Continue reading"
 msgstr ""
 
-#: lib/kogrim_browser.lua:642 lib/kogrim_browser.lua:644
+#: lib/kogrim_browser.lua:888 lib/kogrim_browser.lua:890
 msgid "Recently added"
 msgstr ""
 
-#: lib/kogrim_browser.lua:651 lib/kogrim_browser.lua:653
+#: lib/kogrim_browser.lua:897 lib/kogrim_browser.lua:899
 msgid "All books"
+msgstr ""
+
+#: lib/kogrim_browser.lua:904 main.lua:120
+msgid "Search…"
+msgstr ""
+
+#: lib/kogrim_browser.lua:975
+msgid "Open a book list first — this switches how books are shown."
 msgstr ""
 
 #: lib/kogrim_download.lua:108
@@ -365,4 +315,94 @@ msgstr ""
 
 #: lib/kogrim_download.lua:150
 msgid "This book"
+msgstr ""
+
+#: main.lua:58
+msgid "Grimmory: browse library"
+msgstr ""
+
+#: main.lua:64
+msgid "Grimmory: search"
+msgstr ""
+
+#: main.lua:112
+msgid "Browse library"
+msgstr ""
+
+#: main.lua:130
+msgid "Server and account: %1"
+msgstr ""
+
+#: main.lua:138
+msgid "Test connection"
+msgstr ""
+
+#: main.lua:144
+msgid "Settings"
+msgstr ""
+
+#: main.lua:149
+msgid "Sign out"
+msgstr ""
+
+#: main.lua:157
+msgid "About Grimmory"
+msgstr ""
+
+#: main.lua:162
+msgid ""
+"kogrim %1\n"
+"\n"
+"Browse and download books from a self-hosted Grimmory library.\n"
+"\n"
+"Settings are stored in:\n"
+"%2\n"
+"\n"
+"Note: your Grimmory password is stored there in plain text, as KOReader has "
+"no keychain on these devices."
+msgstr ""
+
+#: main.lua:184
+msgid "Download folder: %1"
+msgstr ""
+
+#: main.lua:211
+msgid "Books loaded at a time: %1"
+msgstr ""
+
+#: main.lua:217
+msgid "Books loaded at a time"
+msgstr ""
+
+#: main.lua:221
+msgid ""
+"How many books to fetch from the server at once. Higher means fewer pauses "
+"while scrolling; lower is quicker on a slow connection."
+msgstr ""
+
+#: main.lua:228
+msgid "Set"
+msgstr ""
+
+#: main.lua:244
+msgid "Show books as: %1"
+msgstr ""
+
+#: main.lua:246
+msgid ""
+"How book lists are drawn. The same switch is on the book list's title bar."
+msgstr ""
+
+#: main.lua:260
+msgid "Show cover art"
+msgstr ""
+
+#: main.lua:261
+msgid ""
+"Show a book's cover in its detail sheet. Covers are downloaded once and kept "
+"in KOReader's cache folder."
+msgstr ""
+
+#: main.lua:268
+msgid "Open books after downloading"
 msgstr ""

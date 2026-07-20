@@ -62,13 +62,73 @@ local noop_widget = setmetatable({}, { __index = function()
     return function() return setmetatable({}, { __index = function() return function() end end }) end
 end })
 for _, m in ipairs{
-    "ui/uimanager", "ui/widget/infomessage", "ui/widget/confirmbox",
+    "ui/widget/infomessage", "ui/widget/confirmbox",
     "ui/widget/menu", "ui/widget/buttondialog", "ui/widget/inputdialog",
     "ui/widget/multiinputdialog", "ui/widget/textviewer", "ui/widget/spinwidget",
     "ui/widget/pathchooser", "ui/network/manager", "ui/trapper", "device",
     "dispatcher", "ui/widget/container/widgetcontainer", "apps/reader/readerui",
     "socket/http", "ltn12", "socket", "socketutil", "rapidjson", "json",
+    "ui/renderimage", "ui/widget/imagewidget", "ui/gesturerange",
+    "ui/widget/textwidget", "ui/widget/textboxwidget",
+    "ui/widget/horizontalgroup", "ui/widget/verticalgroup",
+    "ui/widget/horizontalspan", "ui/widget/verticalspan",
+    "ui/widget/container/centercontainer", "ui/widget/container/framecontainer",
+    "ui/widget/container/inputcontainer", "ui/widget/container/leftcontainer",
+    "ui/widget/container/rightcontainer",
 } do stub(m, noop_widget) end
+
+-- UIManager gets a working scheduler rather than a no-op, because the cover
+-- queue's whole job is *when* it does things. Ticks are collected here and
+-- drained explicitly by the tests, so a run can be stepped one fetch at a time.
+local ticks = {}
+local function drainTicks(limit)
+    local n = 0
+    while #ticks > 0 and (not limit or n < limit) do
+        local fn = table.remove(ticks, 1)
+        fn()
+        n = n + 1
+    end
+    return n
+end
+stub("ui/uimanager", setmetatable({
+    nextTick   = function(_s, fn) ticks[#ticks + 1] = fn end,
+    scheduleIn = function(_s, _sec, fn) ticks[#ticks + 1] = fn end,
+    unschedule = function(_s, fn)
+        for i = #ticks, 1, -1 do
+            if ticks[i] == fn then table.remove(ticks, i) end
+        end
+    end,
+}, { __index = function() return function() end end }))
+
+-- The view modules read real values out of these at FILE scope (font faces,
+-- border sizes), so the blanket no-op stub is not enough -- indexing a function
+-- raises. Given properly, requiring each view module becomes a genuine check
+-- that its requires resolve and its top level runs.
+stub("ui/size", {
+    border  = { thin = 1, default = 2, window = 2, button = 1 },
+    padding = { tiny = 1, small = 2, default = 4, large = 8, button = 2, buttontable = 2 },
+    line    = { thin = 1, medium = 2, focus_indicator = 2 },
+    margin  = { tiny = 1, small = 2, default = 4, title = 4 },
+})
+stub("ui/font", { getFace = function() return { size = 12 } end })
+stub("ui/geometry", { new = function(_s, t) return t or {} end })
+stub("ffi/blitbuffer", {
+    COLOR_BLACK = 0, COLOR_WHITE = 1, COLOR_GRAY = 2,
+})
+
+-- cache.lua is real KOReader code that kogrim_cover_cache builds on, but it
+-- pulls ffi/lru and sha2, which the test runner has no FFI for. Enough of the
+-- interface to let the module load and to keep the pure fit math reachable.
+stub("cache", {
+    new = function(_, o)
+        o = o or {}
+        local store = {}
+        o.check  = function(_s, k) return store[k] end
+        o.insert = function(_s, k, v) store[k] = v end
+        o.clear  = function() store = {} end
+        return o
+    end,
+})
 
 -- socket.url is real in KOReader (its OPDS plugin uses it), but luasocket is
 -- not installed for the test runner. Enough of parse() to exercise the origin
@@ -273,6 +333,190 @@ eq(Http.sameOrigin("https://a.example:8443/x", "https://a.example/y"), false,
    "port change is a different origin")
 eq(Http.sameOrigin("https://a.example/x", "https://A.EXAMPLE/y"), true,
    "host comparison is case-insensitive")
+
+-- Cover URLs are CONSTRUCTED, never taken from the server's thumbnailUrl --
+-- that field is hardcoded to "/api/books/{id}/cover" by AppBookMapper, a path
+-- no controller is mapped to, so it lands on the frontend's catch-all and
+-- returns index.html with a 200. See the note in kogrim_covers.lua.
+print("== cover URLs ==")
+local Covers = require("lib/kogrim_covers")
+Settings.save("server_url", "https://g.example")
+local function urls(book) return table.concat(Covers.urlsFor(book), " ") end
+eq(urls{ id = 799 },
+   "https://g.example/api/v1/media/book/799/thumbnail "
+       .. "https://g.example/api/v1/media/book/799/cover",
+   "thumbnail first, full cover as fallback")
+eq(urls{ id = 799, thumbnailUrl = "/api/books/799/cover" },
+   "https://g.example/api/v1/media/book/799/thumbnail "
+       .. "https://g.example/api/v1/media/book/799/cover",
+   "the server's broken thumbnailUrl is ignored entirely")
+eq(urls{ id = 799, thumbnailUrl = "https://evil.example/steal" },
+   "https://g.example/api/v1/media/book/799/thumbnail "
+       .. "https://g.example/api/v1/media/book/799/cover",
+   "...so it cannot aim a token-bearing request at another host")
+eq(#Covers.urlsFor{ id = "1/../x" }, 0, "non-integer id yields no URL")
+eq(#Covers.urlsFor{}, 0, "no id at all")
+eq(#Covers.urlsFor("not a table"), 0, "non-table input")
+
+print("== cover cache paths ==")
+local function coverName(book)
+    local p = Covers.pathFor(book)
+    return p and p:match("[^/]+$") or nil
+end
+eq(coverName{ id = 799, coverUpdatedOn = "2024-05-01T10:22:33.123Z" },
+   "799-20240501T102233123Z.jpg", "id + coverUpdatedOn as the cache key")
+eq(coverName{ id = 799 }, "799-static.jpg", "no coverUpdatedOn caches forever")
+eq(coverName{ id = 799, coverUpdatedOn = NULL }, "799-static.jpg", "sentinel too")
+eq(coverName{ id = 799, coverUpdatedOn = "../../evil" }, "799-evil.jpg",
+   "non-alphanumerics stripped, so the key cannot shape a path")
+eq(Covers.pathFor{ id = "1/../x" }, nil, "non-integer id is refused")
+eq(Covers.pathFor{}, nil, "no id at all")
+
+-- A non-image body cannot be rejected at render time: ImageWidget substitutes
+-- a checkerboard for anything it fails to decode under an image-looking name,
+-- and that checkerboard is indistinguishable from a real cover to its caller.
+-- So the bytes are the only place to catch it. (This shipped once as a grid of
+-- black and white squares in the detail sheet.)
+print("== cover content sniffing ==")
+local function sniff(bytes)
+    local p = os.tmpname()
+    local f = assert(io.open(p, "wb"))
+    f:write(bytes)
+    f:close()
+    local ok = Covers._test.looksLikeImage(p)
+    os.remove(p)
+    return ok
+end
+eq(sniff("\xFF\xD8\xFF\xE0okay"), true, "JPEG")
+eq(sniff("\x89PNG\r\n\26\n"), true, "PNG")
+eq(sniff("GIF89a..."), true, "GIF")
+eq(sniff("RIFF....WEBP"), true, "WebP")
+eq(sniff("<svg xmlns="), true, "SVG")
+eq(sniff("<!DOCTYPE html><html>"), false, "an HTML login page is not a cover")
+eq(sniff("<html><body>404"), false, "bare HTML either")
+eq(sniff('{"error":"unauthorized"}'), false, "a JSON error served with 200")
+eq(sniff("<?xml version=\"1.0\"?><error/>"), false,
+   "XML is refused even though renderImageData would try it as SVG")
+eq(sniff(""), false, "empty file")
+eq(Covers._test.looksLikeImage("/nonexistent/kogrim/cover.jpg"), false, "missing file")
+
+-- Grid tiles have to line up, so the fit has to be exact rather than
+-- approximately right. Same arithmetic as coverbrowser's getCachedCoverSize.
+print("== cover fit ==")
+local CoverCache = require("lib/kogrim_cover_cache")
+local function fit(iw, ih, mw, mh)
+    local w, h = CoverCache.fit(iw, ih, mw, mh)
+    if not w then return "nil" end
+    return w .. "x" .. h
+end
+-- A 250x350 server thumbnail (the cover_image_resolution default) into a tile.
+-- At full height it wants 214px of width, so which axis binds is decided by
+-- how wide the tile is relative to that.
+eq(fit(250, 350, 250, 300), "214x300", "wide tile: height binds, width shrinks to 214")
+eq(fit(250, 350, 200, 300), "200x280", "narrow tile: width binds, height shrinks to 280")
+eq(fit(400, 300, 200, 300), "200x150", "landscape cover fits on width")
+eq(fit(100, 100, 200, 200), "200x200", "square upscales to fill the tile")
+eq(fit(250, 350, 250, 350), "250x350", "exact match is untouched")
+eq(fit(0, 350, 200, 300), "nil", "zero width is refused")
+eq(fit(250, 0, 200, 300), "nil", "zero height is refused")
+eq(fit(nil, 350, 200, 300), "nil", "missing dimension is refused")
+eq(fit(250, 350, 0, 300), "nil", "zero box is refused")
+
+print("== cover cache keys ==")
+local ck = CoverCache._test.keyFor
+eq(ck("/cache/kogrim-covers/799-20240501T102233Z.jpg", 200, 300),
+   "799-20240501T102233Z.jpg|200x300", "basename plus the box")
+eq(ck("/c/799-A.jpg", 200, 300) == ck("/c/799-B.jpg", 200, 300), false,
+   "replaced artwork is a different key, so no invalidation is needed")
+eq(ck("/c/799-A.jpg", 200, 300) == ck("/c/799-A.jpg", 100, 150), false,
+   "the same cover at two sizes is two entries")
+
+-- The queue exists so a page paints before its covers arrive. What matters is
+-- the scheduling: one fetch per tick, exactly one repaint at the end, and
+-- nothing at all after a cancel -- a late repaint would draw onto a page the
+-- user has already left.
+print("== cover fetch queue ==")
+local Queue = require("lib/kogrim_cover_queue")
+-- Covers.fetch/isCached are stubbed so these tests are about the queue's
+-- sequencing rather than about the network.
+local on_disk, fetched = {}, {}
+Covers.isCached = function(b) return on_disk[b.id] == true end
+Covers.fetch = function(b)
+    fetched[#fetched + 1] = b.id
+    on_disk[b.id] = true
+    return "/cache/" .. b.id .. ".jpg"
+end
+local function books(...)
+    local t = {}
+    for _i, id in ipairs{...} do t[#t + 1] = { id = id } end
+    return t
+end
+
+on_disk, fetched, ticks = {}, {}, {}
+eq(Queue.pending(books(1, 2, 3)) and #Queue.pending(books(1, 2, 3)), 3,
+   "nothing cached: everything is pending")
+on_disk[2] = true
+eq(#Queue.pending(books(1, 2, 3)), 2, "cached books are skipped")
+
+on_disk, fetched, ticks = {}, {}, {}
+local repaints = 0
+eq(Queue.start(books(1, 2, 3), function() repaints = repaints + 1 end), true,
+   "a run starts when covers are missing")
+eq(Queue.isRunning(), true, "and reports itself running")
+drainTicks(1)
+eq(#fetched, 1, "one fetch per tick, not a burst")
+eq(repaints, 0, "no repaint mid-run")
+drainTicks()
+eq(table.concat(fetched, ","), "1,2,3", "all covers fetched, in order")
+eq(repaints, 1, "exactly one repaint, after the whole batch")
+eq(Queue.isRunning(), false, "run is over")
+
+on_disk, fetched, ticks = { [1] = true, [2] = true }, {}, {}
+eq(Queue.start(books(1, 2), function() repaints = repaints + 1 end), false,
+   "no run when every cover is already on disk")
+
+on_disk, fetched, ticks = {}, {}, {}
+repaints = 0
+Queue.start(books(1, 2, 3), function() repaints = repaints + 1 end)
+drainTicks(1)
+Queue.cancel()
+drainTicks()
+eq(#fetched, 1, "cancel stops further fetches")
+eq(repaints, 0, "and the pending repaint never fires")
+eq(Queue.isRunning(), false, "cancelled run is not running")
+
+-- A second start must supersede the first rather than interleave with it.
+on_disk, fetched, ticks = {}, {}, {}
+repaints = 0
+Queue.start(books(1, 2, 3), function() repaints = repaints + 1 end)
+drainTicks(1)
+Queue.start(books(7, 8), function() repaints = repaints + 1 end)
+drainTicks()
+eq(table.concat(fetched, ","), "1,7,8", "the superseded run stops where it was")
+eq(repaints, 1, "and only the surviving run repaints")
+
+-- The view modules cannot be exercised without a device, but they CAN be
+-- loaded. That is worth doing on its own: a mistyped require path or a name
+-- error at file scope would otherwise surface only as a blank screen on a Kobo,
+-- which is a slow way to find a typo.
+print("== view modules load ==")
+for _i, name in ipairs{
+    "lib/kogrim_fake_cover", "lib/kogrim_cover_menu",
+    "lib/kogrim_grid_menu", "lib/kogrim_list_menu",
+} do
+    local ok, mod = pcall(require, name)
+    eq(ok and type(mod) == "table", true, name .. (ok and "" or (": " .. tostring(mod))))
+end
+eq(type(require("lib/kogrim_grid_menu")._recalculateDimen), "function",
+   "grid exports the dimen hook the menu injection needs")
+eq(type(require("lib/kogrim_grid_menu")._updateItemsBuildUI), "function",
+   "grid exports the build hook")
+eq(type(require("lib/kogrim_list_menu")._recalculateDimen), "function",
+   "list exports the dimen hook")
+eq(type(require("lib/kogrim_list_menu")._updateItemsBuildUI), "function",
+   "list exports the build hook")
+eq(type(require("lib/kogrim_cover_menu").updateItems), "function",
+   "cover menu exports the updateItems override")
 
 print("== row text ==")
 eq(B.bookRowText{ title = "No Bad Kids", authors = {"Janet Lansbury"} },
