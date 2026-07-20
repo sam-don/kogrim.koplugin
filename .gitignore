@@ -18,3 +18,13 @@
 # releases page, not in the tree.
 dist/
 *.zip
+
+# Local tooling secrets. tools/.env carries a real Grimmory URL, username and
+# password for the scripts in tools/ -- it must never reach a remote, and this
+# repository has two of them (see the note on mirroring in the README).
+.env
+tools/.env
+
+# Python bytecode from the scripts in tools/.
+__pycache__/
+*.pyc
