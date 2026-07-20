@@ -13,3 +13,8 @@
 
 # Interrupted downloads leave these behind (see kogrim_http.downloadToFile).
 *.tmp
+
+# Release archives built by tools/package.sh. Built artefacts belong on the
+# releases page, not in the tree.
+dist/
+*.zip

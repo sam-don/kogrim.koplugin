@@ -1,0 +1,81 @@
+name: Release
+
+# Publishes a downloadable plugin zip when a version tag is pushed:
+#
+#     git tag v0.1.0 && git push origin v0.1.0
+#
+# The archive contains a single top-level kogrim.koplugin/ directory, which is
+# what users drop into KOReader's plugins/ folder -- see tools/package.sh for
+# why that matters.
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+jobs:
+  release:
+    # This file lives in .github/workflows/, which Forgejo Actions also reads --
+    # so without this guard a tag push would fire it on the Forgejo primary too,
+    # where `gh` is not installed and GITHUB_TOKEN addresses a different API.
+    # CI is happy to run in both places; publishing GitHub releases is not.
+    if: github.server_url == 'https://github.com'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install LuaJIT and gettext
+        run: sudo apt-get update && sudo apt-get install -y luajit gettext
+
+      # Never publish something that doesn't pass. A release is the one artefact
+      # people install without reading, so it gets the same gate as every push.
+      - name: Run test suite
+        run: ./tests/run.sh
+
+      # _meta.lua's version is what KOReader's plugin manager displays, and a
+      # future self-updater would compare it against the release tag. If the two
+      # drift, the updater re-downloads the same version forever -- so a
+      # mismatch fails the release rather than shipping a confusing one.
+      - name: Check tag matches _meta.lua version
+        run: |
+          meta_version=$(grep -oE 'version = "[^"]+"' _meta.lua | head -1 | cut -d'"' -f2)
+          tag_version="${GITHUB_REF_NAME#v}"
+          echo "_meta.lua: $meta_version"
+          echo "tag:       $tag_version"
+          if [ "$meta_version" != "$tag_version" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match _meta.lua version $meta_version."
+            echo "::error::Update version in _meta.lua, or retag."
+            exit 1
+          fi
+
+      - name: Build the plugin zip
+        id: package
+        run: echo "zip=$(./tools/package.sh)" >> "$GITHUB_OUTPUT"
+
+      # Verify the archive is installable rather than trusting that it is: a
+      # release with the wrong directory layout silently installs to nowhere.
+      - name: Verify archive layout
+        run: |
+          unzip -q "${{ steps.package.outputs.zip }}" -d /tmp/verify
+          test -f /tmp/verify/kogrim.koplugin/_meta.lua \
+            || { echo "::error::archive is missing kogrim.koplugin/_meta.lua"; exit 1; }
+          test -f /tmp/verify/kogrim.koplugin/main.lua \
+            || { echo "::error::archive is missing kogrim.koplugin/main.lua"; exit 1; }
+          for f in $(find /tmp/verify -name '*.lua'); do luajit -b "$f" /dev/null; done
+          echo "archive layout OK"
+
+      # gh is preinstalled on GitHub runners, so this needs no third-party
+      # action and nothing extra to trust.
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            "${{ steps.package.outputs.zip }}" \
+            --title "$GITHUB_REF_NAME" \
+            --generate-notes \
+            --notes "Download the zip below, extract it, and put the \`kogrim.koplugin\` folder into KOReader's \`plugins/\` directory. Restart KOReader, then set up your server under **Tools ▸ Grimmory ▸ Server and account**."

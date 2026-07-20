@@ -31,8 +31,9 @@ that name.
 It syntax-checks every file before writing, so it can't push a plugin that would stop KOReader
 starting. Eject and unplug afterwards, then restart KOReader.
 
-**Anything else** — copy the repository contents into a `kogrim.koplugin` directory under
-KOReader's `plugins/`:
+**Anything else** — download `kogrim.koplugin-vX.Y.Z.zip` from the
+[releases page](https://github.com/sam-don/kogrim.koplugin/releases), extract it, and put the
+`kogrim.koplugin` folder it contains into KOReader's `plugins/`:
 
 | Platform | Path |
 |---|---|
