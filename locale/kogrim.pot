@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: kogrim 0.1.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-07-20 09:10+1000\n"
+"POT-Creation-Date: 2026-07-20 10:40+1000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -36,35 +36,35 @@ msgstr ""
 msgid "Grimmory: search"
 msgstr ""
 
-#: main.lua:102
+#: main.lua:111
 msgid "Browse library"
 msgstr ""
 
-#: main.lua:110 lib/kogrim_browser.lua:658
+#: main.lua:119 lib/kogrim_browser.lua:658
 msgid "Search…"
 msgstr ""
 
-#: main.lua:120
+#: main.lua:129
 msgid "Server and account: %1"
 msgstr ""
 
-#: main.lua:128
+#: main.lua:137
 msgid "Test connection"
 msgstr ""
 
-#: main.lua:134
+#: main.lua:143
 msgid "Settings"
 msgstr ""
 
-#: main.lua:139
+#: main.lua:148
 msgid "Sign out"
 msgstr ""
 
-#: main.lua:147
+#: main.lua:156
 msgid "About Grimmory"
 msgstr ""
 
-#: main.lua:152
+#: main.lua:161
 msgid ""
 "kogrim %1\n"
 "\n"
@@ -77,29 +77,29 @@ msgid ""
 "no keychain on these devices."
 msgstr ""
 
-#: main.lua:174
+#: main.lua:183
 msgid "Download folder: %1"
 msgstr ""
 
-#: main.lua:201
+#: main.lua:210
 msgid "Books loaded at a time: %1"
 msgstr ""
 
-#: main.lua:207
+#: main.lua:216
 msgid "Books loaded at a time"
 msgstr ""
 
-#: main.lua:211
+#: main.lua:220
 msgid ""
 "How many books to fetch from the server at once. Higher means fewer pauses "
 "while scrolling; lower is quicker on a slow connection."
 msgstr ""
 
-#: main.lua:218
+#: main.lua:227
 msgid "Set"
 msgstr ""
 
-#: main.lua:227
+#: main.lua:236
 msgid "Open books after downloading"
 msgstr ""
 
@@ -308,7 +308,7 @@ msgstr ""
 
 #: lib/kogrim_browser.lua:593 lib/kogrim_browser.lua:668
 msgid ""
-"Set up your Grimmory server first: Tools ▸ Grimmory ▸ Server and account."
+"Set up your Grimmory server first: Search ▸ Grimmory ▸ Server and account."
 msgstr ""
 
 #: lib/kogrim_browser.lua:600

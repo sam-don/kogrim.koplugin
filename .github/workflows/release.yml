@@ -78,4 +78,4 @@ jobs:
             "${{ steps.package.outputs.zip }}" \
             --title "$GITHUB_REF_NAME" \
             --generate-notes \
-            --notes "Download the zip below, extract it, and put the \`kogrim.koplugin\` folder into KOReader's \`plugins/\` directory. Restart KOReader, then set up your server under **Tools ▸ Grimmory ▸ Server and account**."
+            --notes "Download the zip below, extract it, and put the \`kogrim.koplugin\` folder into KOReader's \`plugins/\` directory. Restart KOReader, then set up your server under **Search ▸ Grimmory ▸ Server and account**."

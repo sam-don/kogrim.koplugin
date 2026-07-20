@@ -590,7 +590,7 @@ end
 function Browser.search()
     if not Api.isConfigured() then
         UIManager:show(InfoMessage:new{
-            text = _("Set up your Grimmory server first: Tools ▸ Grimmory ▸ Server and account."),
+            text = _("Set up your Grimmory server first: Search ▸ Grimmory ▸ Server and account."),
         })
         return
     end
@@ -665,7 +665,7 @@ function Browser.show()
     if _self and not _self.closed then return _self end
     if not Api.isConfigured() then
         UIManager:show(InfoMessage:new{
-            text = _("Set up your Grimmory server first: Tools ▸ Grimmory ▸ Server and account."),
+            text = _("Set up your Grimmory server first: Search ▸ Grimmory ▸ Server and account."),
         })
         return nil
     end

@@ -96,7 +96,16 @@ end
 function KoGrim:addToMainMenu(menu_items)
     menu_items.kogrim = {
         text = _("Grimmory"),
-        sorting_hint = "tools",
+        -- The search tab, alongside "OPDS catalog" and "Find book in Calibre
+        -- catalog" -- remote book sources live together, and it is where people
+        -- already look for one. Tools carries 13 entries by default, so this is
+        -- also a good deal less crowded.
+        --
+        -- "search" exists in BOTH filemanager_menu_order and reader_menu_order,
+        -- which matters because is_doc_only = false puts this menu in the Reader
+        -- too; a hint naming a tab that only one of them has would leave the
+        -- entry unsorted and prefixed "NEW:" by MenuSorter in the other.
+        sorting_hint = "search",
         sub_item_table = {
             {
                 text = _("Browse library"),

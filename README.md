@@ -43,12 +43,12 @@ starting. Eject and unplug afterwards, then restart KOReader.
 
 `tests/`, `tools/` and `.github/` are development-only and don't need to go on the device.
 
-Then set up the connection under **Tools ▸ Grimmory ▸ Server and account**: enter your server
+Then set up the connection under **Search ▸ Grimmory ▸ Server and account**: enter your server
 URL (`https://…`), username and password, and kogrim will verify the login immediately.
 
 ## Use
 
-**Tools ▸ Grimmory ▸ Browse library** opens a hub:
+**Search ▸ Grimmory ▸ Browse library** opens a hub:
 
 - **Continue reading** — books Grimmory has you part-way through
 - **Recently added** — newest arrivals
